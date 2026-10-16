@@ -87,6 +87,8 @@ class InkbirdZoneSwitch(InkbirdEntity, SwitchEntity):
         device = self.coordinator.api.device
         device.zone_active[self._zone] = True
         device.zone_countdown[self._zone] = duration
+        device.zone_remaining_time[self._zone] = duration
+        device.zone_elapsed_time[self._zone] = 0
         device.active_zone |= 1 << (self._zone - 1)
         self.coordinator.async_set_updated_data(device)
         await self.coordinator.async_request_refresh()
@@ -102,6 +104,7 @@ class InkbirdZoneSwitch(InkbirdEntity, SwitchEntity):
         device = self.coordinator.api.device
         device.zone_active[self._zone] = False
         device.zone_countdown[self._zone] = 0
+        device.zone_remaining_time[self._zone] = 0
         device.active_zone &= ~(1 << (self._zone - 1))
         self.coordinator.async_set_updated_data(device)
         await self.coordinator.async_request_refresh()
