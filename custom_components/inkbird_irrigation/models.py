@@ -295,14 +295,14 @@ def decode_dp45(data: bytes, num_zones: int = 8) -> dict[str, Any]:
     Returns dict with:
         command_type: int (0=query, 1=start/reset, 2=auto report)
         target: int (0=all, 1=specific)
-        running_time: dict[int, int] — zone -> minutes currently running
-        duration: dict[int, int] — zone -> single-use duration in minutes
+        remaining_time: dict[int, int] — zone -> minutes left in the current run
+        elapsed_time: dict[int, int] — zone -> minutes elapsed in the current run
     """
     result: dict[str, Any] = {
         "command_type": 0,
         "target": 0,
-        "running_time": {},
-        "duration": {},
+        "remaining_time": {},
+        "elapsed_time": {},
     }
 
     if len(data) < DP45_LENGTH:
@@ -313,10 +313,10 @@ def decode_dp45(data: bytes, num_zones: int = 8) -> dict[str, Any]:
     result["target"] = data[1]
 
     for zone in range(1, num_zones + 1):
-        rt_offset = 2 + (zone - 1) * 2
-        dur_offset = 18 + (zone - 1) * 2
-        result["running_time"][zone] = struct.unpack_from(">H", data, rt_offset)[0]
-        result["duration"][zone] = struct.unpack_from(">H", data, dur_offset)[0]
+        rem_offset = 2 + (zone - 1) * 2
+        ela_offset = 18 + (zone - 1) * 2
+        result["remaining_time"][zone] = struct.unpack_from(">H", data, rem_offset)[0]
+        result["elapsed_time"][zone] = struct.unpack_from(">H", data, ela_offset)[0]
 
     return result
 
