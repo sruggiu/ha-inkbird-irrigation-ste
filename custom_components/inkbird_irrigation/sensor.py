@@ -70,7 +70,10 @@ class InkbirdZoneCountdownSensor(InkbirdEntity, SensorEntity):
     @property
     def native_value(self) -> int:
         """Return the countdown in minutes."""
-        return self.coordinator.api.device.zone_countdown.get(self._zone, 0)
+        +        device = self.coordinator.api.device
++        if self.coordinator.api.profile.zone_control_method == "bitmask_raw":
++            return device.zone_remaining_time.get(self._zone, 0)
++        return device.zone_countdown.get(self._zone, 0)
 
     @property
     def extra_state_attributes(self) -> dict:
@@ -118,7 +121,7 @@ class InkbirdZoneElapsedSensor(InkbirdEntity, SensorEntity):
         # per-zone "use_time" DP is a lifetime cumulative counter and must not be
         # shown here.)
         if self.coordinator.api.profile.zone_control_method == "bitmask_raw":
-            return device.zone_running_time.get(self._zone, 0)
+            return device.zone_elapsed_time.get(self._zone, 0)
 
         # IIC-600 has no per-run elapsed DP, so measure it HA-side from when the
         # zone became active.
