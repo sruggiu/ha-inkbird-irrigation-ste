@@ -181,7 +181,7 @@ class InkbirdDevice:
         if p.dp_irrigation_time_all and str(p.dp_irrigation_time_all) in dps:
             raw = dps[str(p.dp_irrigation_time_all)]
             self.irrigation_time_all = self._parse_raw_dp(raw)
-            self._decode_zone_durations()
+            self._decode_zone_times()
 
         # Normal time — schedule raw bytes (DP 38)
         if p.dp_normal_time and str(p.dp_normal_time) in dps:
@@ -230,38 +230,23 @@ class InkbirdDevice:
             return bytes(raw)
         return b""
 
-    def _decode_zone_durations(self) -> None:
-        """Decode per-zone durations from irrigation_time_all (DP 45).
+    def _decode_zone_times(self) -> None:
+        """Decode per-zone remaining/elapsed minutes from DP 45.
 
-        The raw payload is 34 bytes:
-          Byte 0: command type (0=query, 1=start/reset, 2=auto report)
-          Byte 1: target (0=all, 1=specific)
-          Bytes 2-17: stations 1-8 running time (2 bytes each, big-endian, minutes)
-          Bytes 18-33: stations 1-8 single-use duration (2 bytes each, big-endian, minutes)
+        Payload (34 bytes):
+            Byte 0: command type (0=query, 1=start/reset, 2=auto report)
+            Byte 1: target (0=all, 1=specific)
+            Bytes 2-17: stations 1-8 remaining time (uint16 BE, minutes)
+            Bytes 18-33: stations 1-8 elapsed time (uint16 BE, minutes)
         """
-        data = self.irrigation_time_all
-        parsed = decode_dp45(data, self.profile.num_zones)
-
+        parsed = decode_dp45(self.irrigation_time_all, self.profile.num_zones)
         for zone in range(1, self.profile.num_zones + 1):
-            running = parsed["running_time"].get(zone, 0)
-            duration = parsed["duration"].get(zone, 0)
-
-            # Keep the two DP45 values separate so the sensors can expose a real
-            # per-run elapsed and a derived remaining time, instead of collapsing
-            # them into one ambiguous field.
-            self.zone_running_time[zone] = running
-            self.zone_config_duration[zone] = duration
-
-            # Backward-compatible single field (used by the IIC-800 countdown
-            # sensor as "remaining"): minutes left in the current run.
-            # running_time is minutes elapsed so far, duration is the configured
-            # single-use length, so remaining = duration - elapsed (never < 0).
-            remaining = duration - running
-            self.zone_countdown[zone] = remaining if remaining > 0 else 0
-
-            # Preserve prior behavior for anything still reading zone_duration:
-            # show the live running figure when active, else the configured one.
-            self.zone_duration[zone] = running if running > 0 else duration
+            remaining = parsed["remaining_time"].get(zone, 0)
+            elapsed = parsed["elapsed_time"].get(zone, 0)
+            self.zone_remaining_time[zone] = remaining
+            self.zone_elapsed_time[zone] = elapsed
+            # Kept for entities that still read the legacy countdown field.
+            self.zone_countdown[zone] = remaining
 
 
 
